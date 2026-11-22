@@ -382,7 +382,31 @@ describe('Antigravity unprompted turns', () => {
     await waitFor(async () => expect(await agentTurns(rig)).toHaveLength(1))
     await rig.adapter.cancelTurn({ sessionId: SESSION, fence: 1 })
     await sendHello(rig, 'send-1')
-    agent.reply(await rig.frame('session/prompt'), { stopReason: 'end_turn' })
+    const prompt = await rig.frame('session/prompt')
+    const permission = agent.request(31, 'session/request_permission', {
+      sessionId: PROVIDER_SESSION,
+      toolCall: { toolCallId: 'new-turn-31', title: 'Read generated file' },
+      options: [{ optionId: 'reject-once', name: 'Reject', kind: 'reject_once' }]
+    })
+    const approval = await waitFor(async () => {
+      const cards = (await rig.rig.rows()).filter(
+        (row) => row.body.kind === 'approval' && row.body.resolution.state === 'pending'
+      )
+      expect(cards).toHaveLength(1)
+      return cards[0]
+    })
+    await rig.adapter.answerPrompt({
+      sessionId: SESSION,
+      itemId: approval.itemId,
+      kind: 'approval',
+      response: { kind: 'option', optionId: 'reject-once' },
+      fence: 1,
+      commit: async () => {}
+    })
+    await expect(permission).resolves.toMatchObject({
+      result: { outcome: { outcome: 'selected', optionId: 'reject-once' } }
+    })
+    agent.reply(prompt, { stopReason: 'end_turn' })
     await waitFor(async () =>
       expect((await turns(rig)).at(-1)).toMatchObject({ state: 'completed' })
     )

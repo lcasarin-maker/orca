@@ -108,7 +108,11 @@ export async function acquireAcpStructuredSession(input: {
       retryBusyPrompts: spec.agent === 'omp',
       ...(spec.signIn ? { signIn: spec.signIn } : {}),
       onPermission: (request, context) => {
-        if (!childState.isAcpReadySession(session) || !session.turns?.acceptsRequests) {
+        if (
+          !childState.isAcpReadySession(session) ||
+          !session.turns?.acceptsRequests ||
+          (spec.dialect.reactiveWakeups && session.lane.translator.agentStopInGrace(now()))
+        ) {
           // Nobody can answer during Stop, a steer or teardown.
           return { outcome: { outcome: 'cancelled' } }
         }

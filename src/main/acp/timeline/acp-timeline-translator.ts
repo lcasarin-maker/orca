@@ -103,6 +103,8 @@ export class AcpTimelineTranslator {
 
   isSyntheticBackgroundTask = (taskId: string): boolean => this.ownership.tools.backgrounds(taskId)
 
+  agentStopInGrace = (at: number): boolean => this.agentTurns.withinStopGrace(at)
+
   agentTurnCalls = (): 'none' | 'running' | null => this.agentTurns.calls(this.activeTurn)
 
   promptResult(

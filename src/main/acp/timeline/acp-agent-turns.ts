@@ -25,7 +25,7 @@ export class AcpAgentTurns {
     if (
       !opens ||
       !this.dialect.reactiveWakeups ||
-      at < this.stoppedAt + STOP_GRACE_MS ||
+      this.withinStopGrace(at) ||
       // Trailing status of a call whose turn already ended starts no work.
       (update?.sessionUpdate === 'tool_call_update' && this.tools.ended(update.toolCallId))
     ) {
@@ -33,6 +33,10 @@ export class AcpAgentTurns {
     }
     this.open = `agent:${randomUUID()}`
     return this.open
+  }
+
+  withinStopGrace(at: number): boolean {
+    return at < this.stoppedAt + STOP_GRACE_MS
   }
 
   /** Releases the agent turn if it is the active one; a Stop holds off new ones briefly. */
