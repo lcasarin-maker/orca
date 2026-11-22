@@ -1,0 +1,31 @@
+{
+  "expected": {
+    "requestId": "request-antigravity-acp-foreign-01",
+    "method": "orchestration.dispatch",
+    "runId": "run-antigravity-acp-05",
+    "taskId": "task-antigravity-acp-05",
+    "dispatchId": "dispatch-antigravity-acp-05",
+    "launchId": "launch-antigravity-acp-05",
+    "permissionMode": "ask"
+  },
+  "result": {
+    "requestId": "request-antigravity-acp-foreign-01",
+    "state": "completed",
+    "method": "orchestration.dispatch",
+    "createdAt": "2026-11-21T18:04:00.000Z",
+    "updatedAt": "2026-11-21T18:04:00.025Z",
+    "interpretation": "Request request-antigravity-acp-foreign-01 already took effect (orchestration.dispatch). Replaying it with --retry-request request-antigravity-acp-foreign-01 returns the recorded outcome and starts nothing new.",
+    "receipt": {
+      "method": "session/request_permission",
+      "occurredAt": "2026-11-21T18:04:00.025Z",
+      "runId": "run-antigravity-acp-foreign",
+      "taskId": "task-antigravity-acp-foreign",
+      "dispatchId": "dispatch-antigravity-acp-foreign",
+      "launchId": "launch-antigravity-acp-foreign",
+      "permissionMode": "ask",
+      "acpRequestId": 14,
+      "outcome": { "outcome": "selected", "optionId": "allow-once" },
+      "effectCount": 1
+    }
+  }
+}

@@ -128,6 +128,156 @@ describe('Antigravity unprompted turns', () => {
     expect(await agentTurns(rig)).toMatchObject([{ state: 'running' }])
   })
 
+  it('shows a permission requested after end_turn without sending another prompt', async () => {
+    const { rig } = await open()
+    await sendHello(rig, 'send-before-permission')
+    const prompt = await rig.frame('session/prompt')
+    const { agent } = rig.child()
+    agent.reply(prompt, { stopReason: 'end_turn' })
+    await waitFor(async () => expect(await agentTurns(rig)).toMatchObject([{ state: 'completed' }]))
+
+    const permissionParams = {
+      sessionId: PROVIDER_SESSION,
+      toolCall: { toolCallId: 'background-call-10', title: 'Write generated file' },
+      options: [
+        { optionId: 'allow-once', name: 'Allow', kind: 'allow_once' },
+        { optionId: 'reject-once', name: 'Reject', kind: 'reject_once' }
+      ]
+    }
+    const permission = agent.request(10, 'session/request_permission', permissionParams)
+    agent.send({
+      jsonrpc: '2.0',
+      id: 10,
+      method: 'session/request_permission',
+      params: permissionParams
+    })
+    const approval = await waitFor(async () => {
+      const rows = (await rig.rig.rows()).filter((item) => item.body.kind === 'approval')
+      expect(rows).toHaveLength(1)
+      return rows[0]
+    })
+
+    expect(rig.sent('session/prompt')).toHaveLength(1)
+    await rig.adapter.answerPrompt({
+      sessionId: SESSION,
+      itemId: approval.itemId,
+      kind: 'approval',
+      response: { kind: 'option', optionId: 'allow-once' },
+      fence: 1,
+      commit: async () => {}
+    })
+    await expect(permission).resolves.toMatchObject({
+      result: { outcome: { outcome: 'selected', optionId: 'allow-once' } }
+    })
+    expect(rig.sent('session/prompt')).toHaveLength(1)
+    expect(agent.frames.filter((frame) => frame.id === 10 && frame.method === undefined)).toEqual([
+      expect.objectContaining({
+        id: 10,
+        result: { outcome: { outcome: 'selected', optionId: 'allow-once' } }
+      })
+    ])
+  })
+
+  it('cancels a permission arriving after Stop before opening its approval card', async () => {
+    const { rig } = await open()
+    const { agent } = rig.child()
+    agent.notify('session/update', chunk('working before Stop'))
+    await waitFor(async () => expect(await agentTurns(rig)).toMatchObject([{ state: 'running' }]))
+
+    const permissionParams = {
+      sessionId: PROVIDER_SESSION,
+      toolCall: { toolCallId: 'stopped-call-11', title: 'Write generated file' },
+      options: [{ optionId: 'allow-once', name: 'Allow', kind: 'allow_once' }]
+    }
+    const permissions: ReturnType<typeof agent.request>[] = []
+    agent.on('session/cancel', () => {
+      permissions.push(agent.request(11, 'session/request_permission', permissionParams))
+      agent.send({
+        jsonrpc: '2.0',
+        id: 11,
+        method: 'session/request_permission',
+        params: permissionParams
+      })
+    })
+
+    await expect(rig.adapter.cancelTurn({ sessionId: SESSION, fence: 1 })).resolves.toEqual({
+      cancelled: true
+    })
+    expect(permissions).toHaveLength(1)
+    await rig.settle()
+
+    await waitFor(() =>
+      expect(agent.frames.filter((frame) => frame.id === 11 && frame.method === undefined)).toEqual(
+        [expect.objectContaining({ id: 11, result: { outcome: { outcome: 'cancelled' } } })]
+      )
+    )
+    await expect(permissions[0]).resolves.toMatchObject({
+      result: { outcome: { outcome: 'cancelled' } }
+    })
+    expect((await rig.rig.rows()).filter((row) => row.body.kind === 'approval')).toHaveLength(0)
+    expect(rig.sent('session/prompt')).toHaveLength(0)
+    expect(rig.sent('session/cancel')).toHaveLength(1)
+  })
+
+  it('withdraws the old permission on session replacement and admits the new child request', async () => {
+    const { rig } = await open()
+    const oldAgent = rig.child().agent
+    oldAgent.notify('session/update', chunk('old child work'))
+    await waitFor(async () => expect(await agentTurns(rig)).toMatchObject([{ state: 'running' }]))
+    const oldPermission = oldAgent.request(12, 'session/request_permission', {
+      sessionId: PROVIDER_SESSION,
+      toolCall: { toolCallId: 'replaced-call-12', title: 'Write generated file' },
+      options: [{ optionId: 'allow-once', name: 'Allow', kind: 'allow_once' }]
+    })
+    const oldApproval = await waitFor(async () => {
+      const rows = (await rig.rig.rows()).filter((row) => row.body.kind === 'approval')
+      expect(rows).toHaveLength(1)
+      return rows[0]
+    })
+
+    await rig.acquire({ fence: 2 })
+    const newAgent = rig.child().agent
+    expect(newAgent).not.toBe(oldAgent)
+    await expect(oldPermission).resolves.toMatchObject({
+      result: { outcome: { outcome: 'cancelled' } }
+    })
+    expect(
+      (await rig.rig.rows()).find((row) => row.itemId === oldApproval.itemId)?.body
+    ).toMatchObject({ resolution: { state: 'cancelled' } })
+
+    const newPermission = newAgent.request(13, 'session/request_permission', {
+      sessionId: PROVIDER_SESSION,
+      toolCall: { toolCallId: 'replacement-call-13', title: 'Write generated file' },
+      options: [{ optionId: 'allow-once', name: 'Allow', kind: 'allow_once' }]
+    })
+    const newApproval = await waitFor(async () => {
+      const rows = (await rig.rig.rows()).filter(
+        (row) => row.body.kind === 'approval' && row.body.resolution.state === 'pending'
+      )
+      expect(rows).toHaveLength(1)
+      return rows[0]
+    })
+    await rig.adapter.answerPrompt({
+      sessionId: SESSION,
+      itemId: newApproval.itemId,
+      kind: 'approval',
+      response: { kind: 'option', optionId: 'allow-once' },
+      fence: 2,
+      commit: async () => {}
+    })
+    await expect(newPermission).resolves.toMatchObject({
+      result: { outcome: { outcome: 'selected', optionId: 'allow-once' } }
+    })
+    expect(
+      newAgent.frames.filter((frame) => frame.id === 13 && frame.method === undefined)
+    ).toEqual([
+      expect.objectContaining({
+        id: 13,
+        result: { outcome: { outcome: 'selected', optionId: 'allow-once' } }
+      })
+    ])
+  })
+
   it('completes before a send opens the prompt turn, which no quiet timer ends', async () => {
     const { rig } = await open()
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })

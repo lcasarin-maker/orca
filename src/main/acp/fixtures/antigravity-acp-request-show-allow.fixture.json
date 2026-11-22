@@ -1,0 +1,20 @@
+{
+  "requestId": "request-antigravity-acp-allow-01",
+  "state": "completed",
+  "method": "orchestration.dispatch",
+  "createdAt": "2026-11-21T18:00:00.000Z",
+  "updatedAt": "2026-11-21T18:00:00.025Z",
+  "interpretation": "Request request-antigravity-acp-allow-01 already took effect (orchestration.dispatch). Replaying it with --retry-request request-antigravity-acp-allow-01 returns the recorded outcome and starts nothing new.",
+  "receipt": {
+    "method": "session/request_permission",
+    "occurredAt": "2026-11-21T18:00:00.025Z",
+    "runId": "run-antigravity-acp-01",
+    "taskId": "task-antigravity-acp-01",
+    "dispatchId": "dispatch-antigravity-acp-01",
+    "launchId": "launch-antigravity-acp-01",
+    "permissionMode": "ask",
+    "acpRequestId": 10,
+    "outcome": { "outcome": "selected", "optionId": "allow-once" },
+    "effectCount": 1
+  }
+}

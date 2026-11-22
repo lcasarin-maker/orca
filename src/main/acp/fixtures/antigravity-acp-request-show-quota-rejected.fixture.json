@@ -1,0 +1,21 @@
+{
+  "requestId": "request-antigravity-acp-quota-rejected-01",
+  "state": "completed",
+  "method": "orchestration.dispatch",
+  "createdAt": "2026-11-21T18:03:00.000Z",
+  "updatedAt": "2026-11-21T18:03:00.025Z",
+  "interpretation": "Request request-antigravity-acp-quota-rejected-01 already took effect (orchestration.dispatch). Replaying it with --retry-request request-antigravity-acp-quota-rejected-01 returns the recorded outcome and starts nothing new.",
+  "receipt": {
+    "method": "session/request_permission",
+    "occurredAt": "2026-11-21T18:03:00.025Z",
+    "runId": "run-antigravity-acp-04",
+    "taskId": "task-antigravity-acp-04",
+    "dispatchId": "dispatch-antigravity-acp-04",
+    "launchId": "launch-antigravity-acp-04",
+    "permissionMode": "ask",
+    "acpRequestId": 13,
+    "outcome": "rejected",
+    "rejection": "quota",
+    "effectCount": 0
+  }
+}

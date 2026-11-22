@@ -1,0 +1,21 @@
+{
+  "requestId": "request-antigravity-acp-response-lost-01",
+  "state": "pending",
+  "method": "orchestration.dispatch",
+  "createdAt": "2026-11-21T18:02:00.000Z",
+  "updatedAt": "2026-11-21T18:02:00.025Z",
+  "interpretation": "Request request-antigravity-acp-response-lost-01 was accepted by orchestration.dispatch but its outcome is not recorded yet. The original mutation may still be running, or Orca may have restarted before recording its outcome. Wait for the original command when it is still running; otherwise replay it with --retry-request request-antigravity-acp-response-lost-01. Do not issue a fresh mutation.",
+  "receipt": {
+    "method": "session/request_permission",
+    "occurredAt": "2026-11-21T18:02:00.025Z",
+    "runId": "run-antigravity-acp-03",
+    "taskId": "task-antigravity-acp-03",
+    "dispatchId": "dispatch-antigravity-acp-03",
+    "launchId": "launch-antigravity-acp-03",
+    "permissionMode": "ask",
+    "acpRequestId": 12,
+    "outcome": "unknown",
+    "transport": "response-lost",
+    "effectCount": null
+  }
+}

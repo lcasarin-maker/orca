@@ -1,0 +1,20 @@
+{
+  "requestId": "request-antigravity-acp-cancelled-01",
+  "state": "completed",
+  "method": "orchestration.dispatch",
+  "createdAt": "2026-11-21T18:01:00.000Z",
+  "updatedAt": "2026-11-21T18:01:00.025Z",
+  "interpretation": "Request request-antigravity-acp-cancelled-01 already took effect (orchestration.dispatch). Replaying it with --retry-request request-antigravity-acp-cancelled-01 returns the recorded outcome and starts nothing new.",
+  "receipt": {
+    "method": "session/request_permission",
+    "occurredAt": "2026-11-21T18:01:00.025Z",
+    "runId": "run-antigravity-acp-02",
+    "taskId": "task-antigravity-acp-02",
+    "dispatchId": "dispatch-antigravity-acp-02",
+    "launchId": "launch-antigravity-acp-02",
+    "permissionMode": "ask",
+    "acpRequestId": 11,
+    "outcome": { "outcome": "cancelled" },
+    "effectCount": 0
+  }
+}
