@@ -13,6 +13,7 @@ type OpenRequest = {
 }
 
 export class AcpIncomingRequests {
+  private readonly settling = new Set<Promise<void>>()
   private readonly open = new Map<string | number | null, OpenRequest>()
 
   constructor(
@@ -22,6 +23,10 @@ export class AcpIncomingRequests {
     private readonly capacity: number,
     private readonly diagnose: (message: string) => void
   ) {}
+
+  async waitForReplies(): Promise<void> {
+    await Promise.allSettled(this.settling)
+  }
 
   close(error: Error): void {
     for (const request of this.open.values()) {
@@ -71,7 +76,7 @@ export class AcpIncomingRequests {
         this.open.delete(id)
       }
     }
-    void Promise.race([
+    const settlement = Promise.race([
       abandoned,
       Promise.resolve().then(() => {
         // Cancellation still reaches the handler so permissions can answer `cancelled`.
@@ -109,7 +114,9 @@ export class AcpIncomingRequests {
       .finally(() => {
         retire()
         controller.abort()
+        this.settling.delete(settlement)
       })
+    this.settling.add(settlement)
   }
 
   refuse(id: string | number | null, error: AcpRpcError): void {

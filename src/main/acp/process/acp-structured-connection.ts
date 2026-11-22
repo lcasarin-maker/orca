@@ -11,6 +11,7 @@ export type AcpStructuredConnection = Pick<
   | 'start'
   | 'prompt'
   | 'cancel'
+  | 'waitForIncomingReplies'
   | 'setConfigOption'
   | 'setModel'
   | 'requestExtension'

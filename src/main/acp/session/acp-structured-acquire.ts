@@ -82,7 +82,7 @@ export async function acquireAcpStructuredSession(input: {
   const launchPermission = acpLaunchPermission(spec, launch.fullAccess, acquire.permissionMode)
   const prompts = new AcpStructuredPrompts(
     () => slot.lane,
-    () => childState.isAcpReadySession(session) && session.turns?.acceptsRequests === true
+    () => childState.canAdmitAcpRequest(session)
   )
   const early: (() => void)[] = []
   const whenLane = (deliver: () => void): void => {
@@ -108,11 +108,7 @@ export async function acquireAcpStructuredSession(input: {
       retryBusyPrompts: spec.agent === 'omp',
       ...(spec.signIn ? { signIn: spec.signIn } : {}),
       onPermission: (request, context) => {
-        if (
-          !childState.isAcpReadySession(session) ||
-          !session.turns?.acceptsRequests ||
-          (spec.dialect.reactiveWakeups && session.lane.translator.agentStopInGrace(now()))
-        ) {
+        if (!childState.canAdmitAcpPermission(session, now())) {
           // Nobody can answer during Stop, a steer or teardown.
           return { outcome: { outcome: 'cancelled' } }
         }

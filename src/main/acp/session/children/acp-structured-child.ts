@@ -41,6 +41,22 @@ export function isAcpReadySession(
   return session != null && session.lane !== null && session.turns !== null
 }
 
+export function canAdmitAcpRequest(
+  session: AcpStructuredChild | null
+): session is AcpStructuredSession & AcpStructuredChild {
+  return isAcpReadySession(session) && !session.closeRequested && session.turns.acceptsRequests
+}
+
+export function canAdmitAcpPermission(
+  session: AcpStructuredChild | null,
+  at: number
+): session is AcpStructuredSession & AcpStructuredChild {
+  return (
+    canAdmitAcpRequest(session) &&
+    !(session.spec.dialect.reactiveWakeups && session.lane.translator.agentStopInGrace(at))
+  )
+}
+
 export function canSetAcpOptionWhileIdle(
   session: AcpStructuredChild | undefined,
   input: StructuredAgentSessionSetOptionInput

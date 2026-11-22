@@ -35,7 +35,8 @@ export async function awaitAcpTurnEnd(
   session: AcpStoppableSession,
   stoppedAt: number,
   graceMs: number,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  replies?: Promise<void>
 ): Promise<void> {
   const waiting = new AbortController()
   let timer: ReturnType<typeof setTimeout> | undefined
@@ -47,6 +48,7 @@ export async function awaitAcpTurnEnd(
     await waitForPromiseWithSignal(
       Promise.race([
         Promise.all([
+          replies,
           session.turns.whenIdle(waiting.signal),
           turnId === null ? undefined : session.lane.whenTurnLeaves(turnId, waiting.signal)
         ]),
@@ -66,13 +68,19 @@ export async function windDownAcpTurn(
   graceMs: number
 ): Promise<void> {
   const { connection, turns } = session
-  if (connection.exited || connection.closed || !acpTurnInFlight(session)) {
+  if (connection.exited || connection.closed) {
     return
   }
-  if (turns.stoppedAt === null) {
+  if (turns.stoppedAt === null && acpStopHasWork(session)) {
     interruptAcpTurn(session)
   }
-  await awaitAcpTurnEnd(session, turns.stoppedAt ?? Date.now(), graceMs)
+  await awaitAcpTurnEnd(
+    session,
+    turns.stoppedAt ?? Date.now(),
+    graceMs,
+    undefined,
+    connection.waitForIncomingReplies()
+  )
 }
 
 export async function settleAcpPermissionTransition(

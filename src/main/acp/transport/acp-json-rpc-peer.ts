@@ -169,9 +169,8 @@ export class AcpJsonRpcPeer {
     return this.send({ jsonrpc: '2.0', method, params })
   }
 
-  /** Aborts signals; handlers still own replies. */
-  cancelIncomingRequests(): void {
-    this.incoming.cancel()
+  waitForIncomingReplies(): Promise<void> {
+    return this.incoming.waitForReplies()
   }
 
   close(error: Error = new AcpConnectionClosedError()): void {

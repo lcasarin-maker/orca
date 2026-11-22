@@ -283,6 +283,76 @@ describe('Antigravity unprompted turns', () => {
     ])
   })
 
+  it('finishes sending a withdrawn reply when replacement starts after the old turn ended', async () => {
+    const { rig } = await open()
+    const oldChild = rig.child()
+    const oldAgent = oldChild.agent
+    oldAgent.notify('session/update', chunk('old child work'))
+    await waitFor(async () => expect(await agentTurns(rig)).toMatchObject([{ state: 'running' }]))
+    const permission = oldAgent.request(14, 'session/request_permission', {
+      sessionId: PROVIDER_SESSION,
+      toolCall: { toolCallId: 'retired-call-14', title: 'Write generated file' },
+      options: [{ optionId: 'allow-once', name: 'Allow', kind: 'allow_once' }]
+    })
+    await waitFor(async () =>
+      expect((await rig.rig.rows()).some((row) => row.body.kind === 'approval')).toBe(true)
+    )
+    oldAgent.stdin.cork()
+    let replacement: Promise<unknown> | undefined
+    try {
+      await rig.adapter.cancelTurn({ sessionId: SESSION, fence: 1 })
+      await waitFor(async () =>
+        expect((await agentTurns(rig)).at(-1)).toMatchObject({ state: 'interrupted' })
+      )
+      expect(oldAgent.stdin.writableLength).toBeGreaterThan(0)
+      replacement = rig.acquire({ fence: 2 })
+      await new Promise<void>((resolve) => setImmediate(resolve))
+      expect(oldChild.closes).toBe(0)
+    } finally {
+      oldAgent.stdin.uncork()
+      await replacement
+    }
+    await waitFor(() =>
+      expect(
+        oldAgent.frames.filter((frame) => frame.id === 14 && frame.method === undefined)
+      ).toEqual([expect.objectContaining({ result: { outcome: { outcome: 'cancelled' } } })])
+    )
+    await expect(permission).resolves.toMatchObject({
+      result: { outcome: { outcome: 'cancelled' } }
+    })
+  })
+
+  it('still retires the old child when its reply stream stays blocked past Stop grace', async () => {
+    const { rig } = await open()
+    const oldChild = rig.child()
+    const oldAgent = oldChild.agent
+    oldAgent.notify('session/update', chunk('old child work'))
+    await waitFor(async () => expect(await agentTurns(rig)).toMatchObject([{ state: 'running' }]))
+    void oldAgent.request(15, 'session/request_permission', {
+      sessionId: PROVIDER_SESSION,
+      toolCall: { toolCallId: 'stalled-call-15', title: 'Write generated file' },
+      options: [{ optionId: 'allow-once', name: 'Allow', kind: 'allow_once' }]
+    })
+    await waitFor(async () =>
+      expect((await rig.rig.rows()).some((row) => row.body.kind === 'approval')).toBe(true)
+    )
+    vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] })
+    oldAgent.stdin.cork()
+    const replacement = rig.acquire({ fence: 2 })
+    try {
+      await new Promise<void>((resolve) => setImmediate(resolve))
+      expect(oldAgent.stdin.writableLength).toBeGreaterThan(0)
+      expect(oldChild.closes).toBe(0)
+      await vi.advanceTimersByTimeAsync(5_000)
+      await replacement
+      expect(oldChild.exited).toBe(true)
+      expect(rig.child()).not.toBe(oldChild)
+    } finally {
+      oldAgent.stdin.uncork()
+      vi.useRealTimers()
+    }
+  })
+
   it('completes before a send opens the prompt turn, which no quiet timer ends', async () => {
     const { rig } = await open()
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })

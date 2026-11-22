@@ -62,11 +62,9 @@ export class AcpTimelineTranslator {
     this.providerSessionId = options.sessionId
     this.injectsPromptIdentity = this.dialect.injectedPromptIdentity === true
     this.failures = new AcpTurnFailures(options.sessionId, this.dialect, options.agentName)
-    this.backgroundTasks = new AcpBackgroundTaskTimeline((callId) =>
-      this.ownership.tools.join(callId)
-    )
-    this.prompts = new AcpPromptTurns(options.sessionId, this.dialect, options.agentName)
     const tools = this.ownership.tools
+    this.backgroundTasks = new AcpBackgroundTaskTimeline((callId) => tools.join(callId))
+    this.prompts = new AcpPromptTurns(options.sessionId, this.dialect, options.agentName)
     this.children = new AcpChildSessions(options.sessionId, this.dialect, this.subagents, tools)
     this.agentTurns = new AcpAgentTurns(this.dialect, tools, this.backgroundTasks)
   }

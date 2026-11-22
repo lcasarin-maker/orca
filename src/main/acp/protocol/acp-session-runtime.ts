@@ -241,6 +241,10 @@ export class AcpSessionRuntime {
     )
   }
 
+  waitForIncomingReplies(): Promise<void> {
+    return this.peer.waitForIncomingReplies()
+  }
+
   close(error?: Error): void {
     this.peer.close(error)
     this.listeners.clear()
@@ -264,15 +268,8 @@ export class AcpSessionRuntime {
     received?: (response: T) => void,
     timeoutMs: number | null = null
   ): Promise<T> {
-    return callAcpSession(
-      this.peer,
-      method,
-      params,
-      schema,
-      this.options.onAuthAnswered,
-      received,
-      timeoutMs
-    )
+    const { onAuthAnswered } = this.options
+    return callAcpSession(this.peer, method, params, schema, onAuthAnswered, received, timeoutMs)
   }
 
   private handleRequest(method: string, params: unknown, context: AcpRequestContext): unknown {
@@ -282,8 +279,7 @@ export class AcpSessionRuntime {
       }
       return this.options.onRequest(method, params, context)
     }
-    const diagnose = (message: string): void => this.diagnose(message)
-    const request = readAcpPermissionRequest(params, diagnose)
+    const request = readAcpPermissionRequest(params, this.diagnose)
     if (!request) {
       throw new AcpRpcError(-32602, 'Invalid ACP permission request')
     }
@@ -291,10 +287,10 @@ export class AcpSessionRuntime {
     if (request.sessionId !== this.started?.sessionId) {
       return { outcome: { outcome: 'cancelled' } }
     }
-    return answerAcpPermission(request, context, this.options.onPermission, diagnose)
+    return answerAcpPermission(request, context, this.options.onPermission, this.diagnose)
   }
 
-  private diagnose(message: string): void {
+  private readonly diagnose = (message: string): void => {
     try {
       this.options.onDiagnostic?.(message)
     } catch {
