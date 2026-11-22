@@ -134,7 +134,7 @@ describe('Antigravity unprompted turns', () => {
     const prompt = await rig.frame('session/prompt')
     const { agent } = rig.child()
     agent.reply(prompt, { stopReason: 'end_turn' })
-    await waitFor(async () => expect(await agentTurns(rig)).toMatchObject([{ state: 'completed' }]))
+    await waitFor(async () => expect(await turns(rig)).toMatchObject([{ state: 'completed' }]))
 
     const permissionParams = {
       sessionId: PROVIDER_SESSION,
@@ -238,6 +238,11 @@ describe('Antigravity unprompted turns', () => {
     await rig.acquire({ fence: 2 })
     const newAgent = rig.child().agent
     expect(newAgent).not.toBe(oldAgent)
+    await waitFor(() =>
+      expect(
+        oldAgent.frames.find((frame) => frame.id === 12 && frame.method === undefined)
+      ).toMatchObject({ result: { outcome: { outcome: 'cancelled' } } })
+    )
     await expect(oldPermission).resolves.toMatchObject({
       result: { outcome: { outcome: 'cancelled' } }
     })
